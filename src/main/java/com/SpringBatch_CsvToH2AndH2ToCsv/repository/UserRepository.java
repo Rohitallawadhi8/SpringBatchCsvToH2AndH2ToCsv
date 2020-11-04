@@ -1,16 +1,16 @@
-package com.SpringBatch_CsvToH2AndH2ToCsv.repository;
-
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-import com.SpringBatch_CsvToH2AndH2ToCsv.model.User;
-
-
-@Repository
-public interface UserRepository extends JpaRepository<User, Integer> {
-	
-	
-	
-}
-
+//package com.SpringBatch_CsvToH2AndH2ToCsv.repository;
+//
+//
+//import org.springframework.data.jpa.repository.JpaRepository;
+//import org.springframework.stereotype.Repository;
+//
+//import com.SpringBatch_CsvToH2AndH2ToCsv.model.User;
+//
+//
+//@Repository
+//public interface UserRepository extends JpaRepository<User, Integer> {
+//	
+//	
+//	
+//}
+//

@@ -14,6 +14,9 @@ import org.springframework.batch.core.repository.JobExecutionAlreadyRunningExcep
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +30,22 @@ public class LoadController {
 
     @Autowired
     Job job;
+    
+//    @Autowired
+//	 private UserRepository repo;
+//	 
+	 @Bean
+	 public TaskExecutor threadPoolTaskExecutor(){
+	  
+	  ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+	        executor.setMaxPoolSize(12);
+	        executor.setCorePoolSize(8);
+	        executor.setQueueCapacity(15);
+	  
+	   return executor;
+	 }
+	
+	
 
     @GetMapping("/job")
     public BatchStatus load() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
@@ -37,7 +56,7 @@ public class LoadController {
         JobParameters parameters = new JobParameters(maps);
         JobExecution jobExecution = jobLauncher.run(job, parameters);
 
-        System.out.println("JobExecution: " + jobExecution.getStatus());
+        System.out.println("JobExecution: " + jobExecution.getStatus()+ jobExecution.getId());
 
         System.out.println("Batch is Running...");
         while (jobExecution.isRunning()) {
