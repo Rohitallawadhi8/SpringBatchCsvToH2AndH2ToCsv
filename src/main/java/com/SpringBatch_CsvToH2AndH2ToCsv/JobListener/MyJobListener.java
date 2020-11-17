@@ -30,7 +30,7 @@ public class MyJobListener implements JobExecutionListener {
 	@Value("${uploadFilePath}") 
 	private String uploadFilePath;
 
-	public static final String storageConnectionString = "DefaultEndpointsProtocol=https;AccountName=azureblobaccountrohit;AccountKey=pOrEawPp91GcvdMYrc49uvwCPZNPrBO2KZPHn3xhaKvU/DNK3/osROywo+FJSJIIfMAqc6pERIf24Yuk/2QQvA==;EndpointSuffix=core.windows.net";
+	public static final String storageConnectionString = "DefaultEndpointsProtocolhttps;AccountName=azureblobaccountrohit;AccountKey=pOrEawPp91GcvdMYrc49uvwCPZNPrBO2KZPHn3xhaKvU/DNK3/osROywo+FJSJIIfMAqc6pERIf24Yuk/2QQvA==;EndpointSuffix=core.windows.net";
 
 	
 	@Override
@@ -95,6 +95,7 @@ public class MyJobListener implements JobExecutionListener {
 			try {
 				if (container != null)
 					container.deleteIfExists();
+				
 			} catch (StorageException ex) {
 				System.out.println(String.format("Service error. Http code: %d and error code: %s",
 						ex.getHttpStatusCode(), ex.getErrorCode()));

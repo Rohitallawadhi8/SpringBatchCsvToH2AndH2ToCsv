@@ -9,7 +9,7 @@ import javax.persistence.Id;
 
 
 @Entity
-public class User {
+public class User implements Comparable<User>{
 
     @Id
     @GeneratedValue
@@ -80,4 +80,10 @@ public class User {
     public void setTime(Date time) {
         this.time = time;
     }
+
+	@Override
+	public int compareTo(User o) {
+		// TODO Auto-generated method stub
+		return this.getSalary().compareTo(o.getSalary());
+	}
 }

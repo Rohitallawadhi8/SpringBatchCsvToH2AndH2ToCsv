@@ -28,7 +28,6 @@ public class SpringBatchExample1Application {
 		ApplicationContext context=	SpringApplication.run(SpringBatchExample1Application.class, args);
 		System.out.println("running");
 		
-		System.out.println("running");
 		Test test = context.getBean(Test.class);
 
         String password = test.getPassword();

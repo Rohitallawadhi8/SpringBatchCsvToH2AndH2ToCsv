@@ -16,6 +16,8 @@ import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,7 +50,7 @@ public class LoadController {
 	
 
     @GetMapping("/job")
-    public BatchStatus load() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
+    public ResponseEntity<BatchStatus> load() throws JobParametersInvalidException, JobExecutionAlreadyRunningException, JobRestartException, JobInstanceAlreadyCompleteException {
 
 
         Map<String, JobParameter> maps = new HashMap<>();
@@ -56,13 +58,16 @@ public class LoadController {
         JobParameters parameters = new JobParameters(maps);
         JobExecution jobExecution = jobLauncher.run(job, parameters);
 
-        System.out.println("JobExecution: " + jobExecution.getStatus()+ jobExecution.getId());
+        System.out.println("JobExecution: " + jobExecution.getStatus()+ "JobId"+jobExecution.getId());
 
         System.out.println("Batch is Running...");
         while (jobExecution.isRunning()) {
             System.out.println("...");
         }
 
-        return jobExecution.getStatus();
+        
+        return new ResponseEntity<>(jobExecution.getStatus(), HttpStatus.OK);
+    
+
     }
 }

@@ -1,5 +1,7 @@
 package com.SpringBatch_CsvToH2AndH2ToCsv.config;
 
+import java.util.List;
+
 import javax.batch.runtime.StepExecution;
 import javax.sql.DataSource;
 
@@ -11,7 +13,9 @@ import org.springframework.batch.core.configuration.annotation.StepBuilderFactor
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
+import org.springframework.batch.core.listener.ExecutionContextPromotionListener;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
@@ -24,6 +28,7 @@ import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor;
 import org.springframework.batch.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +41,8 @@ import com.SpringBatch_CsvToH2AndH2ToCsv.JobListener.MyJobListener;
 import com.SpringBatch_CsvToH2AndH2ToCsv.Policy.JobSkipPolicy;
 import com.SpringBatch_CsvToH2AndH2ToCsv.batch.Processor1;
 import com.SpringBatch_CsvToH2AndH2ToCsv.batch.Processor2;
+import com.SpringBatch_CsvToH2AndH2ToCsv.batch.Writer1;
+import com.SpringBatch_CsvToH2AndH2ToCsv.batch.Writer2;
 import com.SpringBatch_CsvToH2AndH2ToCsv.mapper.UserDBRowMapper.UserDBRowMapper;
 import com.SpringBatch_CsvToH2AndH2ToCsv.model.User;
 
@@ -55,6 +62,9 @@ public class SpringBatchConfig {
 
 //	@Autowired
 //	private DBWriter writer1;
+	
+	@Autowired
+	private Writer2 writer2;
 
 	@Autowired
 	private Processor1 processor1;
@@ -78,6 +88,12 @@ public class SpringBatchConfig {
 		return new MyJobListener();
 	}
 
+	
+	@Bean
+	public Writer1 writer1()
+	{
+		return new Writer1();
+	}
 
 	@Bean
 	public Job job() throws Exception {
@@ -87,21 +103,48 @@ public class SpringBatchConfig {
 //				.build();
 		
 		
-		return this.jobBuilderFactory.get("BATCH JOB1").incrementer(new RunIdIncrementer()).start(step1()).next(step2()).listener(myJobListener())
+		return this.jobBuilderFactory.get("BATCH JOB1").incrementer(new RunIdIncrementer()).start(step1()).next(step2())
+				//.listener(myJobListener())
 						.build();
 	}
 
 	@Bean
 	public Step step1() throws Exception { // Step 1 - Read CSV and Write to DB
-		return stepBuilderFactory.get("step1").<User, User>chunk(1).reader(reader1()).processor(processor1)
+		return stepBuilderFactory.get("step1").<User, User>chunk(100).reader(reader1()).processor((ItemProcessor<? super User, ? extends User>) processor1)
 				.writer(writer1())
-				.faultTolerant().skipPolicy(skipPolicy()).build();
+				.listener(promotionListener())
+				//.faultTolerant().skipPolicy(skipPolicy()).build();
+				.build();
 	}
 
+	
 	@Bean
-	public Step step2() throws Exception { // STEP - Read DB and Write CSV
-		return stepBuilderFactory.get("step2").<User, User>chunk(1).reader(reader2()).processor(processor2)
-				.writer(writer2()).build();
+    public ExecutionContextPromotionListener promotionListener() {
+        ExecutionContextPromotionListener listener = new ExecutionContextPromotionListener();
+        listener.setKeys(new String[] {"count"});
+        return listener;
+    }
+	
+	@Bean
+	public Step step2() throws Exception { 
+//		
+//		// STEP - Read DB and Write CSV
+//		return stepBuilderFactory.get("step2").<User, User>chunk(1).reader(reader2()).processor(processor2)
+//				.writer(writer2.writer())
+//				.listener(promotionListener())
+//
+//				.build();
+		
+		
+
+        return stepBuilderFactory.get("step2")
+                .tasklet((contribution, chunkContext) -> {
+                    // retrieve the key from the job execution context
+                    List<User> count = (List) chunkContext.getStepContext().getJobExecutionContext().get("count");
+                    System.out.println("In step 2: step 1 wrote " + count + " items");
+                    return RepeatStatus.FINISHED;
+                })
+                .build();
 	}
 	
 	public void beforeStep(StepExecution stepExecution) {
@@ -123,13 +166,14 @@ public class SpringBatchConfig {
 		System.out.println("inside reader 1");
 
 		FlatFileItemReader<User> flatFileItemReader = new FlatFileItemReader<>();
-//		flatFileItemReader.setResource(new FileSystemResource("src\\main\\resources\\users.csv"));
+		flatFileItemReader.setResource(new FileSystemResource("src\\main\\resources\\users.csv"));
 		
-		flatFileItemReader.setResource(new FileSystemResource(inputResource));
+	//	flatFileItemReader.setResource(new FileSystemResource(inputResource));
 		// flatFileItemReader.setResource(new ClassPathResource("users.csv"));
 		flatFileItemReader.setName("CSV-Reader");
 		flatFileItemReader.setLinesToSkip(1);//because the first line would be always the header
 		flatFileItemReader.setLineMapper(lineMapper());//that knows how to read one line at a time
+	
 		
 		//flatFileItemReader.setBufferedReaderFactory(bufferedReaderFactory);
 		return flatFileItemReader;
@@ -168,36 +212,41 @@ public class SpringBatchConfig {
 	}
 
 
-	@Bean
-	public JdbcBatchItemWriter<User> writer1() {
+//	@Bean
+//	public JdbcBatchItemWriter<User> writer1() {
+//
+//		JdbcBatchItemWriter<User> writer = new JdbcBatchItemWriter<>();
+//		writer.setDataSource(dataSource);
+//		writer.setItemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>());
+//		writer.setSql("Insert into user ( id, dept, name, salary, time) values ( :id, :dept, :name, :salary, :time)");
+//		return writer;
+//
+//	}
 
-		JdbcBatchItemWriter<User> writer = new JdbcBatchItemWriter<>();
-		writer.setDataSource(dataSource);
-		writer.setItemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>());
-		writer.setSql("Insert into user ( id, dept, name, salary, time) values ( :id, :dept, :name, :salary, :time)");
-		return writer;
-
-	}
-
-	@Bean
-	public FlatFileItemWriter<User> writer2() {
-		System.out.println("inside writer 2");
-
-		FlatFileItemWriter<User> writer = new FlatFileItemWriter<User>();
-		writer.setResource(new FileSystemResource(outputResource));
-
-		DelimitedLineAggregator<User> lineAggregator = new DelimitedLineAggregator<User>();
-		lineAggregator.setDelimiter(",");
-
-		BeanWrapperFieldExtractor<User> fieldExtractor = new BeanWrapperFieldExtractor<User>();
-		fieldExtractor.setNames(new String[] { "id", "dept", "name", "salary", "time" });
-
-		lineAggregator.setFieldExtractor(fieldExtractor);
-
-		writer.setLineAggregator(lineAggregator);
-		writer.setShouldDeleteIfExists(true);
-		return writer;
-	}
+//	@Bean
+//	public FlatFileItemWriter<User> writer2() {
+//		System.out.println("inside writer 2");
+//
+//		FlatFileItemWriter<User> writer = new FlatFileItemWriter<User>();
+//		writer.setResource(new FileSystemResource(outputResource));
+//
+//		DelimitedLineAggregator<User> lineAggregator = new DelimitedLineAggregator<User>();
+//		lineAggregator.setDelimiter(",");
+//
+//		BeanWrapperFieldExtractor<User> fieldExtractor = new BeanWrapperFieldExtractor<User>();
+//		fieldExtractor.setNames(new String[] { "id", "dept", "name", "salary", "time" });
+//
+//		lineAggregator.setFieldExtractor(fieldExtractor);
+//
+//		writer.setLineAggregator(lineAggregator);
+//		writer.setShouldDeleteIfExists(true);
+//		return writer;
+//		
+//		
+//		
+//		
+//		
+//	}
 	
 	
 	@Bean
